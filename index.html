@@ -6,8 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Charlie Tran">
 
-<title>ml-term-deposit-subs</title>
+<title>Predicting Term Deposit Subscriptions: A Supervised Learning Approach – ml-term-deposit-subs</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -101,6 +102,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -141,21 +171,54 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a>
+  <ul class="collapse">
+  <li><a href="#main-question" id="toc-main-question" class="nav-link" data-scroll-target="#main-question">Main Question</a></li>
+  </ul></li>
+  <li><a href="#methodology" id="toc-methodology" class="nav-link" data-scroll-target="#methodology">Methodology</a>
+  <ul class="collapse">
+  <li><a href="#k-nearest-neighbors-knn" id="toc-k-nearest-neighbors-knn" class="nav-link" data-scroll-target="#k-nearest-neighbors-knn">K-Nearest Neighbors (KNN)</a></li>
+  <li><a href="#support-vector-machine-svm" id="toc-support-vector-machine-svm" class="nav-link" data-scroll-target="#support-vector-machine-svm">Support Vector Machine (SVM)</a></li>
+  </ul></li>
+  <li><a href="#data-analysis" id="toc-data-analysis" class="nav-link" data-scroll-target="#data-analysis">Data Analysis</a>
+  <ul class="collapse">
+  <li><a href="#feature-selection-and-data-preprocessing-with-frequency-encoding" id="toc-feature-selection-and-data-preprocessing-with-frequency-encoding" class="nav-link" data-scroll-target="#feature-selection-and-data-preprocessing-with-frequency-encoding">Feature Selection and Data Preprocessing with Frequency Encoding</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
+  <li><a href="#model-evaluation" id="toc-model-evaluation" class="nav-link" data-scroll-target="#model-evaluation">Model Evaluation</a></li>
+  </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a>
+  <ul class="collapse">
+  <li><a href="#challenges-and-limitations" id="toc-challenges-and-limitations" class="nav-link" data-scroll-target="#challenges-and-limitations">Challenges and Limitations</a></li>
+  <li><a href="#future-improvements" id="toc-future-improvements" class="nav-link" data-scroll-target="#future-improvements">Future Improvements</a></li>
+  <li><a href="#final-conclusion" id="toc-final-conclusion" class="nav-link" data-scroll-target="#final-conclusion">Final Conclusion</a></li>
+  </ul></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">ml-term-deposit-subs</h1>
+<h1 class="title">Predicting Term Deposit Subscriptions: A Supervised Learning Approach</h1>
 </div>
 
 
 
 <div class="quarto-title-meta">
 
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Charlie Tran </p>
+          </div>
+  </div>
     
   
     
@@ -166,16 +229,225 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>This is a Quarto website.</p>
-<p>To learn more about Quarto websites visit <a href="https://quarto.org/docs/websites" class="uri">https://quarto.org/docs/websites</a>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">+</span> <span class="dv">1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 2</code></pre>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">"class"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">"caret"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">"e1071"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">"corrplot"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">"kableExtra"</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">"ggplot2"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>In today’s competitive financial industry, effective marketing strategies are critical for retaining customers and driving growth. One of the most pressing challenges faced by banks is optimizing outreach efforts to target clients who are most likely to respond positively to specific campaigns. Inefficient marketing not only wastes resources but can also lead to customer fatigue. A 2022 report by McKinsey &amp; Company highlights that excessive, untargeted outreach reduces customer trust and engagement over time (McKinsey &amp; Company, 2022). This issue is particularly pronounced in sectors such as banking, where customers are inundated with financial offers and promotions. To address this, data-driven marketing strategies have become essential for maximizing campaign effectiveness while maintaining customer satisfaction.</p>
+<p>The Bank Marketing dataset, provided by the UCI Machine Learning Repository, reflects these real-world challenges by recording detailed information about clients of a Portuguese banking institution. This dataset includes attributes such as client demographics, financial status, and previous interactions with marketing campaigns, as well as the outcome of whether they subscribed to a term deposit. The importance of this problem lies in identifying the right clients to target, which can help banks reduce costs, improve conversion rates, and ultimately enhance their competitive edge in the industry.</p>
+<p>A 2022 Deloitte study on financial services noted that successful customer retention strategies, including targeted marketing, can improve long-term profitability by up to 25% (Deloitte, 2022). Subscription-based financial products such as term deposits are a cornerstone of customer retention strategies, and predictive modeling can offer banks actionable insights to achieve this goal.</p>
+<p>In this project, I aim to use supervised machine learning techniques to predict whether a client will subscribe to a term deposit. Specifically, I will employ two distinct supervised learning algorithms—K-Nearest Neighbors (KNN) and Support Vector Machine (SVM)—to build predictive models and evaluate their performance. Both methods offer unique strengths in capturing patterns within labeled data, enabling robust predictions. Using metrics such as accuracy, precision, recall, and F1-score, Iwill measure and compare the models’ effectiveness, with a particular focus on addressing class imbalance in the data. The findings of this project are expected to not only improve marketing efficiency for financial institutions but also provide a deeper understanding of how client characteristics influence subscription behavior.</p>
+<section id="main-question" class="level2">
+<h2 class="anchored" data-anchor-id="main-question">Main Question</h2>
+<p>Which model, KNN or SVM, best predicts whether a a client will subscribe to a term deposit or not?</p>
+<div style="page-break-after: always;"></div>
+</section>
+</section>
+<section id="methodology" class="level1">
+<h1>Methodology</h1>
+<section id="k-nearest-neighbors-knn" class="level2">
+<h2 class="anchored" data-anchor-id="k-nearest-neighbors-knn">K-Nearest Neighbors (KNN)</h2>
+<p>KNN is a simple, non-parametric algorithm that classifies an observation based on the majority class of its “k” nearest neighbors in the feature space. It assumes that similar observations are likely to belong to the same class. The distance between data points is typically measured using the Euclidean distance formula:</p>
+<p><span class="math display">\[
+d(x, y) = \sqrt{\sum_{i=1}^n (x_i - y_i)^2}
+\]</span></p>
+<section id="prediction-formula" class="level5">
+<h5 class="anchored" data-anchor-id="prediction-formula">Prediction Formula:</h5>
+<p>For a new observation <span class="math inline">\(x_{new}\)</span>:</p>
+<ul>
+<li>Compute the distance between <span class="math inline">\(x_{new}\)</span> and all observations in the training set.</li>
+<li>Identify the <span class="math inline">\(k\)</span> nearest neighbors based on these distances.</li>
+<li>Assign <span class="math inline">\(x_{new}\)</span> to the class most frequent among these <span class="math inline">\(k\)</span> neighbors.</li>
+</ul>
+</section>
+<section id="advantages" class="level5">
+<h5 class="anchored" data-anchor-id="advantages">Advantages:</h5>
+<ul>
+<li>Easy to implement and interpret.</li>
+<li>Effective for smaller datasets with well-separated classes.</li>
+</ul>
+</section>
+<section id="disadvantages" class="level5">
+<h5 class="anchored" data-anchor-id="disadvantages">Disadvantages:</h5>
+<ul>
+<li>Computationally expensive for large datasets, as it requires calculating distances for all observations.</li>
+<li>Sensitive to irrelevant features and class imbalance.</li>
+</ul>
+</section>
+<section id="application-in-project" class="level5">
+<h5 class="anchored" data-anchor-id="application-in-project">Application in Project:</h5>
+<p>I will experiment with different values of <span class="math inline">\(k\)</span> to find the optimal number of neighbors. Cross-validation will be used to evaluate the model’s performance, and I will preprocess the data (e.g., normalization) to ensure that features are on a comparable scale.</p>
+</section>
+</section>
+<section id="support-vector-machine-svm" class="level2">
+<h2 class="anchored" data-anchor-id="support-vector-machine-svm">Support Vector Machine (SVM)</h2>
+<p>SVM is a robust classification algorithm that works by finding a hyperplane that best separates the data points into two classes. It maximizes the margin between the closest points (support vectors) of each class to the hyperplane. The decision boundary is represented as:</p>
+<p><span class="math display">\[
+f(x)=w^Tx+b
+\]</span></p>
+<p>where <span class="math inline">\(w\)</span> is the weight vector, x represents the input features, and b is the bias term. SVM optimizes the following objective:</p>
+<p><span class="math display">\[
+\begin{aligned}
+    &amp; \text{minimize}_{w, b} \quad \frac{1}{2} \| \mathbf{w} \|^2 \\
+    &amp; \text{subject to } \quad y_i (\mathbf{w}^\top \mathbf{x}_i - b) \geq 1 \quad \forall i \in \{1, \ldots, n\}
+\end{aligned}
+\]</span></p>
+<section id="kernel-trick" class="level5">
+<h5 class="anchored" data-anchor-id="kernel-trick">Kernel Trick:</h5>
+<p>For non-linear separable data, SVM uses kernel functions (e.g., linear, polynomial, radial basis function) to map the data into a higher-dimensional space, making it linearly separable.</p>
+</section>
+<section id="advantages-1" class="level5">
+<h5 class="anchored" data-anchor-id="advantages-1">Advantages:</h5>
+<ul>
+<li>Effective in high-dimensional spaces.</li>
+<li>Works well with non-linear boundaries using appropriate kernels.</li>
+<li>Robust to overfitting in many cases due to regularization.</li>
+</ul>
+</section>
+<section id="disadvantages-1" class="level5">
+<h5 class="anchored" data-anchor-id="disadvantages-1">Disadvantages:</h5>
+<p>Computationally expensive for large datasets. Choosing the right kernel and hyperparameters (e.g., <span class="math inline">\(C\)</span>, <span class="math inline">\(\gamma\)</span>) requires careful tuning.</p>
+</section>
+<section id="application-in-project-1" class="level4">
+<h4 class="anchored" data-anchor-id="application-in-project-1">Application in Project:</h4>
+<p>I will use SVM with various kernels, such as linear and radial basis function (RBF), to find the best fit for the dataset. Hyperparameter optimization (e.g., tuning for <span class="math inline">\(C\)</span> and <span class="math inline">\(\gamma\)</span>) will be performed to improve performance. Cross-validation will be used to ensure generalizability.</p>
+<div style="page-break-after: always;"></div>
+</section>
+</section>
+</section>
+<section id="data-analysis" class="level1">
+<h1>Data Analysis</h1>
+<section id="feature-selection-and-data-preprocessing-with-frequency-encoding" class="level2">
+<h2 class="anchored" data-anchor-id="feature-selection-and-data-preprocessing-with-frequency-encoding">Feature Selection and Data Preprocessing with Frequency Encoding</h2>
+<p>The dataset is from UC Irvine Machine Learning Repository with 17 variables and reduced from 45211 to 7842 observations by omitting entries with missing values. The dataset used for this analysis includes demographic, financial, and marketing-related features, all of which were carefully considered during feature selection. Binary variables such as housing, loan, default, and y were retained as they represent important binary decisions, particularly relevant in the context of financial services. These variables were converted to numeric values, where “yes” was encoded as 1 and “no” as 0. This transformation ensures compatibility with machine learning models while preserving the original meaning of these variables.</p>
+<p>Categorical variables like job, education, marital, and contact were frequency encoded. Frequency encoding replaces each category with its proportion in the dataset, thereby retaining the relationship between the dataset distribution and the importance of the category without increasing dimensionality. Unlike one-hot encoding, which generates additional columns, frequency encoding keeps the feature space manageable and avoids potential overfitting caused by high-dimensional data.</p>
+<p>Continuous variables such as age, balance, duration, and campaign were standardized to ensure all features contribute equally to machine learning models that are sensitive to the magnitude of input features, such as Support Vector Machines (SVM) or K-Nearest Neighbors (KNN). Standardization transforms each feature to have a mean of 0 and a standard deviation of 1, enabling better numerical stability and ensuring fair weight distribution across variables during model training.</p>
+<p>The resulting dataset includes binary variables encoded as numeric values (0/1), frequency-encoded categorical variables, and scaled continuous variables. All missing values, originally represented as “unknown,” were either removed or imputed, depending on the extent of missingness. No features were excluded in this step, as all variables were deemed potentially valuable for predicting whether a client will subscribe to a term deposit. The correlation matrix below also helps verify the lack of multicollinearity or redundant features.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
 </div>
+</div>
+<p>In summary, the final preprocessed dataset is clean, fully numeric, and standardized, with all features prepared for effective use in model training and evaluation. This approach ensures that the dataset retains its predictive potential while addressing the challenges of high dimensionality and feature scale inconsistency.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>I proceed to train our model on the 80% training data, and then record its prediction error on left out 20% testing data for both KNN and SVM (Linear and RBF). The KNN model was tuned with the optimal K value and the SVM models were tuned with the optimal cost and/or gamma values. The following are the evaluation metrics for each model.</p>
+<section id="confusion-matrix-for-evaluation-set" class="level5">
+<h5 class="anchored" data-anchor-id="confusion-matrix-for-evaluation-set">Confusion Matrix for Evaluation Set</h5>
+<p><span class="math inline">\(\textbf{Confusion Matrix: KNN}\)</span> <span class="math display">\[
+\begin{array}{c|c|c}
+           &amp; \textbf{Predicted No} &amp; \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} &amp; 1116                 &amp; 189                  \\
+\textbf{Actual Yes} &amp; 95                  &amp; 168                 \\
+\end{array}
+\]</span> <span class="math inline">\(\textbf{Confusion Matrix: SVM (RBF)}\)</span> <span class="math display">\[
+\begin{array}{c|c|c}
+           &amp; \textbf{Predicted No} &amp; \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} &amp; 1122                 &amp; 173                  \\
+\textbf{Actual Yes} &amp; 89                  &amp; 184                 \\
+\end{array}
+\]</span> <span class="math inline">\(\textbf{Confusion Matrix: SVM (Linear)}\)</span> <span class="math display">\[
+\begin{array}{c|c|c}
+           &amp; \textbf{Predicted No} &amp; \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} &amp; 1121                 &amp; 179                  \\
+\textbf{Actual Yes} &amp; 90                  &amp; 178                 \\
+\end{array}
+\]</span></p>
+<div class="cell">
+<div class="cell-output-display">
+
+</div>
+</div>
+</section>
+<section id="confusion-matrix-for-full-data-set" class="level5">
+<h5 class="anchored" data-anchor-id="confusion-matrix-for-full-data-set">Confusion Matrix for Full Data Set</h5>
+<p>I chose to keep use the SVM model with the radial basis function kernel since its Precision and Accuracy was noticeable better than the linear kernel’s metrics. The KNN and SVM (RBF) models was applied onto the full data set to checks its performance as seen below.</p>
+<p><span class="math inline">\(\textbf{Confusion Matrix: KNN}\)</span> <span class="math display">\[
+\begin{array}{c|c|c}
+           &amp; \textbf{Predicted No} &amp; \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} &amp; 5663 &amp; 872 \\
+\textbf{Actual Yes} &amp; 393  &amp; 914 \\
+\end{array}
+\]</span> <span class="math inline">\(\textbf{Confusion Matrix: SVM (RBF)}\)</span> <span class="math display">\[
+\begin{array}{c|c|c}
+           &amp; \textbf{Predicted No} &amp; \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} &amp; 5773 &amp; 677 \\
+\textbf{Actual Yes} &amp; 283  &amp; 1109 \\
+\end{array}
+\]</span> <span class="math inline">\(\textbf{Model Performance Metrics on Full Data Set}\)</span></p>
+<div class="cell">
+<div class="cell-output-display">
+
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>This is a sample SVM plot of two features with the fitted boundary.</p>
+</section>
+</section>
+<section id="model-evaluation" class="level2">
+<h2 class="anchored" data-anchor-id="model-evaluation">Model Evaluation</h2>
+<p>The two models, KNN and SVM (using the RBF kernel), were trained and evaluated on the full dataset. Both models demonstrated strong performance, with slight variations in their respective metrics. The KNN model achieved an accuracy of 0.8387 and a precision of 0.8666, highlighting its effectiveness in minimizing false positives. This is particularly valuable for marketing campaigns where resources are limited, ensuring that clients predicted to subscribe are more likely to actually do so, thereby reducing wasted efforts on uninterested clients.</p>
+<p>However, KNN’s recall (0.9351) was slightly lower compared to SVM, indicating that KNN might miss some potential subscribers. While this could result in missed revenue opportunities, the model’s higher precision makes it suitable for scenarios where avoiding false positives is critical. Additionally, KNN’s simplicity and ease of interpretation further solidify its role in contexts where explainability is essential.</p>
+<p>The SVM model using the RBF kernel outperformed KNN in recall, achieving a rate of 0.9533, the highest among both models. This indicates SVM’s strength in identifying potential clients who are likely to subscribe, reducing false negatives. In marketing applications, this high recall ensures a wider reach and minimizes the risk of overlooking potential customers, although it comes at the cost of slightly lower precision (0.8950). This trade-off may result in contacting a few uninterested clients, which is acceptable in scenarios where maximizing client engagement is a priority.</p>
+<p>The decision boundary visualization for SVM highlights its ability to model non-linear relationships within the data. This adaptability enables it to capture complex patterns in client behavior that simpler models, like KNN, may fail to recognize.</p>
+</section>
+</section>
+<section id="conclusion" class="level1">
+<h1>Conclusion</h1>
+<p>This study aimed to evaluate the effectiveness of two machine learning models—KNN and SVM with an RBF kernel—for predicting whether a client would subscribe to a term deposit. The analysis showed that while both models performed well, the SVM model with the RBF kernel outperformed the KNN model across all key performance metrics.</p>
+<p>The SVM model achieved an accuracy of 87.76%, precision of 89.50%, recall of 95.33%, and an F1-score of 92.32%, outperforming KNN on every metric. Its superior recall highlights its ability to identify potential subscribers more effectively, reducing the number of false negatives. Additionally, its high precision ensures that the predicted subscribers are more likely to actually subscribe, which minimizes wasted marketing efforts. The SVM’s adaptability to capture non-linear relationships in the data likely contributed to its superior performance, making it a strong choice for this task.</p>
+<p>In comparison, the KNN model achieved an accuracy of 83.87%, precision of 86.66%, recall of 93.51%, and an F1-score of 89.95%. While the KNN model showed reasonable performance, it lagged behind SVM on all fronts. Its slightly lower recall and precision indicate that it may miss some potential subscribers while also predicting a higher number of false positives compared to SVM. However, it is important to note that KNN remains a simpler and more interpretable model, which could still be valuable in situations where model explainability is critical.</p>
+<section id="challenges-and-limitations" class="level2">
+<h2 class="anchored" data-anchor-id="challenges-and-limitations">Challenges and Limitations</h2>
+<p>During the analysis, several challenges were encountered:</p>
+<ul>
+<li>Imbalanced Data: The dataset was imbalanced, with a significantly higher proportion of clients not subscribing. While stratified train-test splits helped mitigate this, imbalanced data inherently impacts model performance and could bias predictions toward the majority class.</li>
+<li>SVM Complexity: SVM required careful tuning of hyperparameters (e.g., cost and gamma) and was computationally intensive, especially when training on the full dataset. However, these efforts were justified by its superior performance.</li>
+</ul>
+</section>
+<section id="future-improvements" class="level2">
+<h2 class="anchored" data-anchor-id="future-improvements">Future Improvements</h2>
+<p>To further enhance model performance and scalability, the following improvements are recommended:</p>
+<ul>
+<li>Feature Engineering: Additional feature engineering or feature selection techniques, such as principal component analysis (PCA) or recursive feature elimination, could reduce dimensionality and improve efficiency.</li>
+<li>Addressing Class Imbalance: Techniques like SMOTE or class-weighted loss functions could help address class imbalance and improve the models’ ability to handle minority class predictions.</li>
+<li>Exploration of Advanced Models: Incorporating ensemble methods, such as Random Forests or Gradient Boosting Machines, might yield even better predictive performance.</li>
+<li>Model Deployment Considerations: Given SVM’s computational complexity, it may be worthwhile to explore approximate SVM implementations or alternatives like logistic regression for real-time deployment.</li>
+</ul>
+</section>
+<section id="final-conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="final-conclusion">Final Conclusion</h2>
+<p>Based on the results, the SVM model with the RBF kernel is the clear winner for this application, delivering superior performance across accuracy, precision, recall, and F1-score. Its ability to balance identifying potential subscribers while maintaining high precision makes it the most reliable option for this marketing task. While KNN offers simplicity and interpretability, its lower performance metrics indicate that it is less suitable for this particular problem. In conclusion, SVM should be prioritized for deployment, especially in contexts where both recall and precision are critical to achieving marketing success.</p>
+</section>
+</section>
+<section id="references" class="level1">
+<h1>References</h1>
+<p>Moro, S., Rita, P., &amp; Cortez, P. (2014). Bank Marketing [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5K306.</p>
+<p>McKinsey &amp; Company. (2022). The state of customer care in 2022. Retrieved from https://shorturl.at/LsiQ7</p>
+<p>Deloitte. (2022). Why all organizations need a Customer Service Strategy, now!. Retrieved from https://shorturl.at/aQdB3</p>
+<p>James, G., Witten, D., Hastie, T., &amp; Tibshirani, R. (2021). An introduction to statistical learning: With applications in R (2nd ed.). https://doi.org/10.1007/978-1-0716-1418-1</p>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

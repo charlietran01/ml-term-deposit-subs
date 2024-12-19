@@ -2,9 +2,72 @@
   {
     "objectID": "index.html",
     "href": "index.html",
-    "title": "ml-term-deposit-subs",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
     "section": "",
-    "text": "This is a Quarto website.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites.\n\n1 + 1\n\n[1] 2"
+    "text": "install.packages(\"class\")\ninstall.packages(\"caret\")\ninstall.packages(\"e1071\")\ninstall.packages(\"corrplot\")\ninstall.packages(\"kableExtra\")\ninstall.packages(\"ggplot2\")"
+  },
+  {
+    "objectID": "index.html#main-question",
+    "href": "index.html#main-question",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "Main Question",
+    "text": "Main Question\nWhich model, KNN or SVM, best predicts whether a a client will subscribe to a term deposit or not?"
+  },
+  {
+    "objectID": "index.html#k-nearest-neighbors-knn",
+    "href": "index.html#k-nearest-neighbors-knn",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "K-Nearest Neighbors (KNN)",
+    "text": "K-Nearest Neighbors (KNN)\nKNN is a simple, non-parametric algorithm that classifies an observation based on the majority class of its “k” nearest neighbors in the feature space. It assumes that similar observations are likely to belong to the same class. The distance between data points is typically measured using the Euclidean distance formula:\n\\[\nd(x, y) = \\sqrt{\\sum_{i=1}^n (x_i - y_i)^2}\n\\]\n\nPrediction Formula:\nFor a new observation \\(x_{new}\\):\n\nCompute the distance between \\(x_{new}\\) and all observations in the training set.\nIdentify the \\(k\\) nearest neighbors based on these distances.\nAssign \\(x_{new}\\) to the class most frequent among these \\(k\\) neighbors.\n\n\n\nAdvantages:\n\nEasy to implement and interpret.\nEffective for smaller datasets with well-separated classes.\n\n\n\nDisadvantages:\n\nComputationally expensive for large datasets, as it requires calculating distances for all observations.\nSensitive to irrelevant features and class imbalance.\n\n\n\nApplication in Project:\nI will experiment with different values of \\(k\\) to find the optimal number of neighbors. Cross-validation will be used to evaluate the model’s performance, and I will preprocess the data (e.g., normalization) to ensure that features are on a comparable scale."
+  },
+  {
+    "objectID": "index.html#support-vector-machine-svm",
+    "href": "index.html#support-vector-machine-svm",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "Support Vector Machine (SVM)",
+    "text": "Support Vector Machine (SVM)\nSVM is a robust classification algorithm that works by finding a hyperplane that best separates the data points into two classes. It maximizes the margin between the closest points (support vectors) of each class to the hyperplane. The decision boundary is represented as:\n\\[\nf(x)=w^Tx+b\n\\]\nwhere \\(w\\) is the weight vector, x represents the input features, and b is the bias term. SVM optimizes the following objective:\n\\[\n\\begin{aligned}\n    & \\text{minimize}_{w, b} \\quad \\frac{1}{2} \\| \\mathbf{w} \\|^2 \\\\\n    & \\text{subject to } \\quad y_i (\\mathbf{w}^\\top \\mathbf{x}_i - b) \\geq 1 \\quad \\forall i \\in \\{1, \\ldots, n\\}\n\\end{aligned}\n\\]\n\nKernel Trick:\nFor non-linear separable data, SVM uses kernel functions (e.g., linear, polynomial, radial basis function) to map the data into a higher-dimensional space, making it linearly separable.\n\n\nAdvantages:\n\nEffective in high-dimensional spaces.\nWorks well with non-linear boundaries using appropriate kernels.\nRobust to overfitting in many cases due to regularization.\n\n\n\nDisadvantages:\nComputationally expensive for large datasets. Choosing the right kernel and hyperparameters (e.g., \\(C\\), \\(\\gamma\\)) requires careful tuning.\n\n\nApplication in Project:\nI will use SVM with various kernels, such as linear and radial basis function (RBF), to find the best fit for the dataset. Hyperparameter optimization (e.g., tuning for \\(C\\) and \\(\\gamma\\)) will be performed to improve performance. Cross-validation will be used to ensure generalizability."
+  },
+  {
+    "objectID": "index.html#feature-selection-and-data-preprocessing-with-frequency-encoding",
+    "href": "index.html#feature-selection-and-data-preprocessing-with-frequency-encoding",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "Feature Selection and Data Preprocessing with Frequency Encoding",
+    "text": "Feature Selection and Data Preprocessing with Frequency Encoding\nThe dataset is from UC Irvine Machine Learning Repository with 17 variables and reduced from 45211 to 7842 observations by omitting entries with missing values. The dataset used for this analysis includes demographic, financial, and marketing-related features, all of which were carefully considered during feature selection. Binary variables such as housing, loan, default, and y were retained as they represent important binary decisions, particularly relevant in the context of financial services. These variables were converted to numeric values, where “yes” was encoded as 1 and “no” as 0. This transformation ensures compatibility with machine learning models while preserving the original meaning of these variables.\nCategorical variables like job, education, marital, and contact were frequency encoded. Frequency encoding replaces each category with its proportion in the dataset, thereby retaining the relationship between the dataset distribution and the importance of the category without increasing dimensionality. Unlike one-hot encoding, which generates additional columns, frequency encoding keeps the feature space manageable and avoids potential overfitting caused by high-dimensional data.\nContinuous variables such as age, balance, duration, and campaign were standardized to ensure all features contribute equally to machine learning models that are sensitive to the magnitude of input features, such as Support Vector Machines (SVM) or K-Nearest Neighbors (KNN). Standardization transforms each feature to have a mean of 0 and a standard deviation of 1, enabling better numerical stability and ensuring fair weight distribution across variables during model training.\nThe resulting dataset includes binary variables encoded as numeric values (0/1), frequency-encoded categorical variables, and scaled continuous variables. All missing values, originally represented as “unknown,” were either removed or imputed, depending on the extent of missingness. No features were excluded in this step, as all variables were deemed potentially valuable for predicting whether a client will subscribe to a term deposit. The correlation matrix below also helps verify the lack of multicollinearity or redundant features.\n\n\n\n\n\n\n\n\n\nIn summary, the final preprocessed dataset is clean, fully numeric, and standardized, with all features prepared for effective use in model training and evaluation. This approach ensures that the dataset retains its predictive potential while addressing the challenges of high dimensionality and feature scale inconsistency."
+  },
+  {
+    "objectID": "index.html#results",
+    "href": "index.html#results",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "Results",
+    "text": "Results\nI proceed to train our model on the 80% training data, and then record its prediction error on left out 20% testing data for both KNN and SVM (Linear and RBF). The KNN model was tuned with the optimal K value and the SVM models were tuned with the optimal cost and/or gamma values. The following are the evaluation metrics for each model.\n\nConfusion Matrix for Evaluation Set\n\\(\\textbf{Confusion Matrix: KNN}\\) \\[\n\\begin{array}{c|c|c}\n           & \\textbf{Predicted No} & \\textbf{Predicted Yes} \\\\ \\hline\n\\textbf{Actual No} & 1116                 & 189                  \\\\\n\\textbf{Actual Yes} & 95                  & 168                 \\\\\n\\end{array}\n\\] \\(\\textbf{Confusion Matrix: SVM (RBF)}\\) \\[\n\\begin{array}{c|c|c}\n           & \\textbf{Predicted No} & \\textbf{Predicted Yes} \\\\ \\hline\n\\textbf{Actual No} & 1122                 & 173                  \\\\\n\\textbf{Actual Yes} & 89                  & 184                 \\\\\n\\end{array}\n\\] \\(\\textbf{Confusion Matrix: SVM (Linear)}\\) \\[\n\\begin{array}{c|c|c}\n           & \\textbf{Predicted No} & \\textbf{Predicted Yes} \\\\ \\hline\n\\textbf{Actual No} & 1121                 & 179                  \\\\\n\\textbf{Actual Yes} & 90                  & 178                 \\\\\n\\end{array}\n\\]\n\n\n\n\n\n\n\nConfusion Matrix for Full Data Set\nI chose to keep use the SVM model with the radial basis function kernel since its Precision and Accuracy was noticeable better than the linear kernel’s metrics. The KNN and SVM (RBF) models was applied onto the full data set to checks its performance as seen below.\n\\(\\textbf{Confusion Matrix: KNN}\\) \\[\n\\begin{array}{c|c|c}\n           & \\textbf{Predicted No} & \\textbf{Predicted Yes} \\\\ \\hline\n\\textbf{Actual No} & 5663 & 872 \\\\\n\\textbf{Actual Yes} & 393  & 914 \\\\\n\\end{array}\n\\] \\(\\textbf{Confusion Matrix: SVM (RBF)}\\) \\[\n\\begin{array}{c|c|c}\n           & \\textbf{Predicted No} & \\textbf{Predicted Yes} \\\\ \\hline\n\\textbf{Actual No} & 5773 & 677 \\\\\n\\textbf{Actual Yes} & 283  & 1109 \\\\\n\\end{array}\n\\] \\(\\textbf{Model Performance Metrics on Full Data Set}\\)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThis is a sample SVM plot of two features with the fitted boundary."
+  },
+  {
+    "objectID": "index.html#model-evaluation",
+    "href": "index.html#model-evaluation",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "Model Evaluation",
+    "text": "Model Evaluation\nThe two models, KNN and SVM (using the RBF kernel), were trained and evaluated on the full dataset. Both models demonstrated strong performance, with slight variations in their respective metrics. The KNN model achieved an accuracy of 0.8387 and a precision of 0.8666, highlighting its effectiveness in minimizing false positives. This is particularly valuable for marketing campaigns where resources are limited, ensuring that clients predicted to subscribe are more likely to actually do so, thereby reducing wasted efforts on uninterested clients.\nHowever, KNN’s recall (0.9351) was slightly lower compared to SVM, indicating that KNN might miss some potential subscribers. While this could result in missed revenue opportunities, the model’s higher precision makes it suitable for scenarios where avoiding false positives is critical. Additionally, KNN’s simplicity and ease of interpretation further solidify its role in contexts where explainability is essential.\nThe SVM model using the RBF kernel outperformed KNN in recall, achieving a rate of 0.9533, the highest among both models. This indicates SVM’s strength in identifying potential clients who are likely to subscribe, reducing false negatives. In marketing applications, this high recall ensures a wider reach and minimizes the risk of overlooking potential customers, although it comes at the cost of slightly lower precision (0.8950). This trade-off may result in contacting a few uninterested clients, which is acceptable in scenarios where maximizing client engagement is a priority.\nThe decision boundary visualization for SVM highlights its ability to model non-linear relationships within the data. This adaptability enables it to capture complex patterns in client behavior that simpler models, like KNN, may fail to recognize."
+  },
+  {
+    "objectID": "index.html#challenges-and-limitations",
+    "href": "index.html#challenges-and-limitations",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "Challenges and Limitations",
+    "text": "Challenges and Limitations\nDuring the analysis, several challenges were encountered:\n\nImbalanced Data: The dataset was imbalanced, with a significantly higher proportion of clients not subscribing. While stratified train-test splits helped mitigate this, imbalanced data inherently impacts model performance and could bias predictions toward the majority class.\nSVM Complexity: SVM required careful tuning of hyperparameters (e.g., cost and gamma) and was computationally intensive, especially when training on the full dataset. However, these efforts were justified by its superior performance."
+  },
+  {
+    "objectID": "index.html#future-improvements",
+    "href": "index.html#future-improvements",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "Future Improvements",
+    "text": "Future Improvements\nTo further enhance model performance and scalability, the following improvements are recommended:\n\nFeature Engineering: Additional feature engineering or feature selection techniques, such as principal component analysis (PCA) or recursive feature elimination, could reduce dimensionality and improve efficiency.\nAddressing Class Imbalance: Techniques like SMOTE or class-weighted loss functions could help address class imbalance and improve the models’ ability to handle minority class predictions.\nExploration of Advanced Models: Incorporating ensemble methods, such as Random Forests or Gradient Boosting Machines, might yield even better predictive performance.\nModel Deployment Considerations: Given SVM’s computational complexity, it may be worthwhile to explore approximate SVM implementations or alternatives like logistic regression for real-time deployment."
+  },
+  {
+    "objectID": "index.html#final-conclusion",
+    "href": "index.html#final-conclusion",
+    "title": "Predicting Term Deposit Subscriptions: A Supervised Learning Approach",
+    "section": "Final Conclusion",
+    "text": "Final Conclusion\nBased on the results, the SVM model with the RBF kernel is the clear winner for this application, delivering superior performance across accuracy, precision, recall, and F1-score. Its ability to balance identifying potential subscribers while maintaining high precision makes it the most reliable option for this marketing task. While KNN offers simplicity and interpretability, its lower performance metrics indicate that it is less suitable for this particular problem. In conclusion, SVM should be prioritized for deployment, especially in contexts where both recall and precision are critical to achieving marketing success."
   },
   {
     "objectID": "about.html",
