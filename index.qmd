@@ -589,7 +589,7 @@ metrics <- data.frame(
 # Create the table using kable
 metrics_table <- metrics %>%
   kable(
-    "latex",
+    format = "html",
     booktabs = TRUE,
     caption = "Performance Metrics: KNN vs SVM (RBF)",
     align = "c"
