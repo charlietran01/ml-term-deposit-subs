@@ -1,11 +1,689 @@
 ---
-title: "ml-term-deposit-subs"
+title: "Predicting Term Deposit Subscriptions: A Supervised Learning Approach"
+author: Charlie Tran
 ---
 
-This is a Quarto website.
 
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+```{r, results='hide'}
+install.packages("class")
+install.packages("caret")
+install.packages("e1071")
+install.packages("corrplot")
+install.packages("kableExtra")
+install.packages("ggplot2")
+```
 
 ```{r}
-1 + 1
+#| results: hide
+#| include: false
+
+# Load the dataset
+bank_full <- read.csv("bank-full.csv", sep = ";", stringsAsFactors = FALSE)
+
+# Replace "unknown" values with NA
+bank_full[bank_full == "unknown"] <- NA
+
+# Handle missing values
+bank_clean <- na.omit(bank_full)  # Remove rows with NA
+
+# Frequency encoding for categorical variables
+categorical_vars <- names(bank_clean)[sapply(bank_clean, is.character) & !(names(bank_clean) %in% c("housing", "loan", "default", "y"))]
+for (cat_var in categorical_vars) {
+  freq_table <- table(bank_clean[[cat_var]]) / nrow(bank_clean)
+  bank_clean[[cat_var]] <- as.numeric(freq_table[bank_clean[[cat_var]]])
+}
+
+# Convert binary variables to numeric (0/1)
+binary_vars <- c("housing", "loan", "default", "y")
+bank_clean[binary_vars] <- lapply(bank_clean[binary_vars], function(x) {
+  ifelse(x == "yes", 1, ifelse(x == "no", 0, NA))
+})
+
+# Scale only non-binary numeric variables
+numeric_vars <- setdiff(names(bank_clean), binary_vars)
+bank_clean[numeric_vars] <- scale(bank_clean[numeric_vars])
+
+# Verify the preprocessed dataset
+str(bank_clean)
+summary(bank_clean)
+
+
 ```
+
+```{r}
+#| results: hide
+#| include: false
+#| cache: true
+
+# Load required libraries
+library(class)
+library(caret)
+
+# Stratified train-test split
+set.seed(123)
+train_index <- createDataPartition(bank_clean$y, p = 0.8, list = FALSE)
+train_data <- bank_clean[train_index, ]
+test_data <- bank_clean[-train_index, ]
+
+# Separate features and target variable
+train_features <- train_data[, -which(names(train_data) == "y")]
+test_features <- test_data[, -which(names(test_data) == "y")]
+train_target <- factor(train_data$y)
+test_target <- factor(test_data$y)
+
+# Define the range of k values to test
+k_values <- 1:20
+
+# Initialize a vector to store accuracies
+accuracy_knn <- numeric(length(k_values))
+
+# Loop through each k value
+for (k in k_values) {
+  # Train and predict using KNN
+  knn_pred <- knn(train_features, test_features, cl = train_target, k = k)
+  
+  # Convert predictions to factor with the same levels as the target
+  knn_pred <- factor(knn_pred, levels = levels(test_target))
+  
+  # Calculate accuracy
+  accuracy_knn[k] <- mean(knn_pred == test_target)
+}
+
+# Find the optimal k
+optimal_k <- k_values[which.max(accuracy_knn)]
+cat("Optimal k:", optimal_k, "\n")
+
+# Train the final KNN model using the optimal k
+knn_final_pred <- knn(train_features, test_features, cl = train_target, k = optimal_k)
+
+# Ensure predictions have the same levels as the target
+knn_final_pred <- factor(knn_final_pred, levels = levels(test_target))
+
+# Check if both classes are present in predictions
+if (length(unique(knn_final_pred)) < 2) {
+  stop("Predictions contain only one class. Please check the dataset or adjust the model.")
+}
+
+# Calculate confusion matrix and evaluation metrics
+confusion_matrix_knn <- confusionMatrix(data = knn_final_pred, reference = test_target)
+
+# Print metrics
+cat("\n--- KNN Evaluation Metrics ---\n")
+cat("Accuracy:", confusion_matrix_knn$overall["Accuracy"], "\n")
+cat("Precision:", confusion_matrix_knn$byClass["Precision"], "\n")
+cat("Recall:", confusion_matrix_knn$byClass["Recall"], "\n")
+cat("F1-Score:", confusion_matrix_knn$byClass["F1"], "\n")
+cat("\nConfusion Matrix:\n")
+print(confusion_matrix_knn$table)
+
+```
+
+```{r}
+#| results: hide
+#| include: false
+#| cache: true
+
+# Load required libraries
+library(e1071)    # For SVM and tuning
+library(caret)    # For train-test split and metrics
+
+# --- Data Preparation ---
+
+# Stratified train-test split
+set.seed(123)
+train_index <- createDataPartition(bank_clean$y, p = 0.8, list = FALSE)
+train_data <- bank_clean[train_index, ]
+test_data <- bank_clean[-train_index, ]
+
+# Ensure target variable is a factor
+train_data$y <- factor(train_data$y)
+test_data$y <- factor(test_data$y)
+
+# --- Hyperparameter Tuning ---
+
+# Tune SVM with linear kernel
+set.seed(123)
+svm_tuned_linear <- tune(
+  svm,
+  y ~ ., 
+  data = train_data,
+  kernel = "linear",
+  ranges = list(cost = c(0.001, 0.01, 0.1, 1,5,10)),
+  tune.control = tune.control(sampling = "cross")
+)
+
+# Extract the best cost parameter
+best_cost_linear <- svm_tuned_linear$best.parameters$cost
+cat("Best Linear SVM Cost:", best_cost_linear, "\n")
+
+# --- Train the Final Linear SVM Model ---
+
+# Train SVM with class weights
+svm_final_linear <- svm(
+  y ~ ., 
+  data = train_data, 
+  kernel = "linear", 
+  cost = best_cost_linear, 
+)
+
+# --- Evaluate the Model ---
+
+# Predict on the test data
+svm_linear_pred <- predict(svm_final_linear, test_data)
+
+# Ensure predictions are factors with matching levels
+svm_linear_pred <- factor(svm_linear_pred, levels = levels(test_data$y))
+
+# Calculate confusion matrix and evaluation metrics
+confusion_matrix_linear <- confusionMatrix(data = svm_linear_pred, reference = test_data$y)
+
+# Print evaluation metrics
+cat("\n--- Linear SVM Evaluation Metrics ---\n")
+cat("Accuracy:", confusion_matrix_linear$overall["Accuracy"], "\n")
+cat("Precision:", confusion_matrix_linear$byClass["Precision"], "\n")
+cat("Recall:", confusion_matrix_linear$byClass["Recall"], "\n")
+cat("F1-Score:", confusion_matrix_linear$byClass["F1"], "\n")
+cat("\nConfusion Matrix:\n")
+print(confusion_matrix_linear$table)
+
+
+```
+
+```{r}
+#| results: hide
+#| include: false
+#| cache: true
+
+# Load required libraries
+library(e1071)    # For SVM and tuning
+library(caret)    # For train-test split and metrics
+
+# --- Data Preparation ---
+
+# Stratified train-test split
+set.seed(123)
+train_index <- createDataPartition(bank_clean$y, p = 0.8, list = FALSE)
+train_data <- bank_clean[train_index, ]
+test_data <- bank_clean[-train_index, ]
+
+# Ensure target variable is a factor
+train_data$y <- factor(train_data$y)
+test_data$y <- factor(test_data$y)
+
+# --- Hyperparameter Tuning ---
+
+# Tune SVM with RBF kernel
+set.seed(123)
+svm_tuned_rbf <- tune(
+  svm,
+  y ~ ., 
+  data = train_data,
+  kernel = "radial",
+  ranges = list(
+    cost = c(0.1, 1, 10),
+    gamma = c(0.01, 0.1, 1)
+  ),
+  tune.control = tune.control(sampling = "cross")
+)
+
+# Extract the best cost and gamma parameters
+best_cost_rbf <- svm_tuned_rbf$best.parameters$cost
+best_gamma_rbf <- svm_tuned_rbf$best.parameters$gamma
+cat("Best RBF SVM Cost:", best_cost_rbf, "\n")
+cat("Best RBF SVM Gamma:", best_gamma_rbf, "\n")
+
+# --- Train the Final RBF SVM Model ---
+
+# Calculate class weights (inverse of class frequencies)
+#class_weights <- 1 / table(train_data$y)
+
+# Train SVM with the best parameters and class weights
+svm_final_rbf <- svm(
+  y ~ ., 
+  data = train_data, 
+  kernel = "radial", 
+  cost = best_cost_rbf, 
+  gamma = best_gamma_rbf, 
+  #class.weights = class_weights
+)
+
+# --- Evaluate the Model ---
+
+# Predict on the test data
+svm_rbf_pred <- predict(svm_final_rbf, test_data)
+
+# Ensure predictions are factors with matching levels
+svm_rbf_pred <- factor(svm_rbf_pred, levels = levels(test_data$y))
+
+# Calculate confusion matrix and evaluation metrics
+confusion_matrix_rbf <- confusionMatrix(data = svm_rbf_pred, reference = test_data$y)
+
+# Print evaluation metrics
+cat("\n--- RBF SVM Evaluation Metrics ---\n")
+cat("Accuracy:", confusion_matrix_rbf$overall["Accuracy"], "\n")
+cat("Precision:", confusion_matrix_rbf$byClass["Precision"], "\n")
+cat("Recall:", confusion_matrix_rbf$byClass["Recall"], "\n")
+cat("F1-Score:", confusion_matrix_rbf$byClass["F1"], "\n")
+cat("\nConfusion Matrix:\n")
+print(confusion_matrix_rbf$table)
+
+```
+
+\vfill
+
+# Introduction
+
+In today’s competitive financial industry, effective marketing strategies are critical for retaining customers and driving growth. One of the most pressing challenges faced by banks is optimizing outreach efforts to target clients who are most likely to respond positively to specific campaigns. Inefficient marketing not only wastes resources but can also lead to customer fatigue. A 2022 report by McKinsey & Company highlights that excessive, untargeted outreach reduces customer trust and engagement over time (McKinsey & Company, 2022). This issue is particularly pronounced in sectors such as banking, where customers are inundated with financial offers and promotions. To address this, data-driven marketing strategies have become essential for maximizing campaign effectiveness while maintaining customer satisfaction.
+
+The Bank Marketing dataset, provided by the UCI Machine Learning Repository, reflects these real-world challenges by recording detailed information about clients of a Portuguese banking institution. This dataset includes attributes such as client demographics, financial status, and previous interactions with marketing campaigns, as well as the outcome of whether they subscribed to a term deposit. The importance of this problem lies in identifying the right clients to target, which can help banks reduce costs, improve conversion rates, and ultimately enhance their competitive edge in the industry.
+
+A 2022 Deloitte study on financial services noted that successful customer retention strategies, including targeted marketing, can improve long-term profitability by up to 25% (Deloitte, 2022). Subscription-based financial products such as term deposits are a cornerstone of customer retention strategies, and predictive modeling can offer banks actionable insights to achieve this goal.
+
+In this project, I aim to use supervised machine learning techniques to predict whether a client will subscribe to a term deposit. Specifically, I will employ two distinct supervised learning algorithms—K-Nearest Neighbors (KNN) and Support Vector Machine (SVM)—to build predictive models and evaluate their performance. Both methods offer unique strengths in capturing patterns within labeled data, enabling robust predictions. Using metrics such as accuracy, precision, recall, and F1-score, Iwill measure and compare the models' effectiveness, with a particular focus on addressing class imbalance in the data. The findings of this project are expected to not only improve marketing efficiency for financial institutions but also provide a deeper understanding of how client characteristics influence subscription behavior.
+
+## Main Question
+
+Which model, KNN or SVM, best predicts whether a a client will subscribe to a term deposit or not?
+
+\newpage
+
+# Methodology
+
+## K-Nearest Neighbors (KNN)
+
+KNN is a simple, non-parametric algorithm that classifies an observation based on the majority class of its "k" nearest neighbors in the feature space. It assumes that similar observations are likely to belong to the same class. The distance between data points is typically measured using the Euclidean distance formula:
+
+$$
+d(x, y) = \sqrt{\sum_{i=1}^n (x_i - y_i)^2}
+$$
+
+##### Prediction Formula:
+
+For a new observation $x_{new}$:
+
+-   Compute the distance between $x_{new}$ and all observations in the training set.
+-   Identify the $k$ nearest neighbors based on these distances.
+-   Assign $x_{new}$ to the class most frequent among these $k$ neighbors.
+
+##### Advantages:
+
+-   Easy to implement and interpret.
+-   Effective for smaller datasets with well-separated classes.
+
+##### Disadvantages:
+
+-   Computationally expensive for large datasets, as it requires calculating distances for all observations.
+-   Sensitive to irrelevant features and class imbalance.
+
+##### Application in Project:
+
+I will experiment with different values of $k$ to find the optimal number of neighbors. Cross-validation will be used to evaluate the model's performance, and I will preprocess the data (e.g., normalization) to ensure that features are on a comparable scale.
+
+## Support Vector Machine (SVM)
+
+SVM is a robust classification algorithm that works by finding a hyperplane that best separates the data points into two classes. It maximizes the margin between the closest points (support vectors) of each class to the hyperplane. The decision boundary is represented as:
+
+$$
+f(x)=w^Tx+b
+$$
+
+where $w$ is the weight vector, x represents the input features, and b is the bias term. SVM optimizes the following objective:
+
+$$
+\begin{aligned}
+    & \text{minimize}_{w, b} \quad \frac{1}{2} \| \mathbf{w} \|^2 \\
+    & \text{subject to } \quad y_i (\mathbf{w}^\top \mathbf{x}_i - b) \geq 1 \quad \forall i \in \{1, \ldots, n\}
+\end{aligned}
+$$
+
+##### Kernel Trick:
+
+For non-linear separable data, SVM uses kernel functions (e.g., linear, polynomial, radial basis function) to map the data into a higher-dimensional space, making it linearly separable.
+
+##### Advantages:
+
+-   Effective in high-dimensional spaces.
+-   Works well with non-linear boundaries using appropriate kernels.
+-   Robust to overfitting in many cases due to regularization.
+
+##### Disadvantages:
+
+Computationally expensive for large datasets. Choosing the right kernel and hyperparameters (e.g., $C$, $\gamma$) requires careful tuning.
+
+#### Application in Project:
+
+I will use SVM with various kernels, such as linear and radial basis function (RBF), to find the best fit for the dataset. Hyperparameter optimization (e.g., tuning for $C$ and $\gamma$) will be performed to improve performance. Cross-validation will be used to ensure generalizability.
+
+\newpage
+
+# Data Analysis
+
+## Feature Selection and Data Preprocessing with Frequency Encoding
+
+The dataset is from UC Irvine Machine Learning Repository with 17 variables and reduced from 45211 to 7842 observations by omitting entries with missing values. The dataset used for this analysis includes demographic, financial, and marketing-related features, all of which were carefully considered during feature selection. Binary variables such as housing, loan, default, and y were retained as they represent important binary decisions, particularly relevant in the context of financial services. These variables were converted to numeric values, where "yes" was encoded as 1 and "no" as 0. This transformation ensures compatibility with machine learning models while preserving the original meaning of these variables.
+
+Categorical variables like job, education, marital, and contact were frequency encoded. Frequency encoding replaces each category with its proportion in the dataset, thereby retaining the relationship between the dataset distribution and the importance of the category without increasing dimensionality. Unlike one-hot encoding, which generates additional columns, frequency encoding keeps the feature space manageable and avoids potential overfitting caused by high-dimensional data.
+
+Continuous variables such as age, balance, duration, and campaign were standardized to ensure all features contribute equally to machine learning models that are sensitive to the magnitude of input features, such as Support Vector Machines (SVM) or K-Nearest Neighbors (KNN). Standardization transforms each feature to have a mean of 0 and a standard deviation of 1, enabling better numerical stability and ensuring fair weight distribution across variables during model training.
+
+The resulting dataset includes binary variables encoded as numeric values (0/1), frequency-encoded categorical variables, and scaled continuous variables. All missing values, originally represented as "unknown," were either removed or imputed, depending on the extent of missingness. No features were excluded in this step, as all variables were deemed potentially valuable for predicting whether a client will subscribe to a term deposit. The correlation matrix below also helps verify the lack of multicollinearity or redundant features.
+
+```{r}
+#| echo: false
+suppressPackageStartupMessages({
+  library(corrplot)
+})
+
+# Load required library
+library(corrplot)
+
+# Compute correlation matrix
+correlation_matrix <- cor(train_features, use = "complete.obs")
+
+# Improved heatmap
+corrplot(
+  correlation_matrix,
+  method = "color",        # Use colored tiles
+  title = "Feature Correlations", # Add a title
+  mar = c(0, 0, 1, 0),     # Adjust margin to fit the title
+  tl.cex = 0.8,            # Adjust text label size
+  tl.col = "black",        # Use black text for better readability
+  number.cex = 0.7         # Adjust size of correlation coefficient numbers
+)
+
+
+```
+
+In summary, the final preprocessed dataset is clean, fully numeric, and standardized, with all features prepared for effective use in model training and evaluation. This approach ensures that the dataset retains its predictive potential while addressing the challenges of high dimensionality and feature scale inconsistency.
+
+
+
+## Results
+
+I proceed to train our model on the 80% training data, and then record its prediction error on left out 20% testing data for both KNN and SVM (Linear and RBF). The KNN model was tuned with the optimal K value and the SVM models were tuned with the optimal cost and/or gamma values. The following are the evaluation metrics for each model.
+
+##### Confusion Matrix for Evaluation Set
+
+$\textbf{Confusion Matrix: KNN}$
+$$
+\begin{array}{c|c|c}
+           & \textbf{Predicted No} & \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} & 1116                 & 189                  \\
+\textbf{Actual Yes} & 95                  & 168                 \\
+\end{array}
+$$
+$\textbf{Confusion Matrix: SVM (RBF)}$
+$$
+\begin{array}{c|c|c}
+           & \textbf{Predicted No} & \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} & 1122                 & 173                  \\
+\textbf{Actual Yes} & 89                  & 184                 \\
+\end{array}
+$$
+$\textbf{Confusion Matrix: SVM (Linear)}$
+$$
+\begin{array}{c|c|c}
+           & \textbf{Predicted No} & \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} & 1121                 & 179                  \\
+\textbf{Actual Yes} & 90                  & 178                 \\
+\end{array}
+$$
+```{r, warning=FALSE}
+#| echo: false
+
+suppressPackageStartupMessages({
+  library(class)
+  library(caret)
+})
+
+library(class)
+library(caret)
+
+# KNN Predictions on the test data
+knn_pred <- knn(train_features, test_features, cl = train_target, k = optimal_k)
+
+# Ensure predictions are factors with matching levels
+knn_pred <- factor(knn_pred, levels = levels(test_target))
+
+# Confusion Matrix and Metrics for KNN
+confusion_matrix_knn <- confusionMatrix(data = knn_pred, reference = test_target)
+
+# Extract Metrics for KNN
+knn_accuracy <- confusion_matrix_knn$overall["Accuracy"]
+knn_precision <- confusion_matrix_knn$byClass["Precision"]
+knn_recall <- confusion_matrix_knn$byClass["Recall"]
+knn_f1 <- confusion_matrix_knn$byClass["F1"]
+
+# Metrics for SVM Linear
+svm_linear_accuracy <- confusion_matrix_linear$overall["Accuracy"]
+svm_linear_precision <- confusion_matrix_linear$byClass["Precision"]
+svm_linear_recall <- confusion_matrix_linear$byClass["Recall"]
+svm_linear_f1 <- confusion_matrix_linear$byClass["F1"]
+
+# Metrics for SVM RBF
+svm_rbf_accuracy <- confusion_matrix_rbf$overall["Accuracy"]
+svm_rbf_precision <- confusion_matrix_rbf$byClass["Precision"]
+svm_rbf_recall <- confusion_matrix_rbf$byClass["Recall"]
+svm_rbf_f1 <- confusion_matrix_rbf$byClass["F1"]
+
+# Create a data frame for comparison
+model_comparison <- data.frame(
+  KNN = c(knn_accuracy, knn_precision, knn_recall, knn_f1),
+  SVM_Linear = c(svm_linear_accuracy, svm_linear_precision, svm_linear_recall, svm_linear_f1),
+  SVM_RBF = c(svm_rbf_accuracy, svm_rbf_precision, svm_rbf_recall, svm_rbf_f1)
+)
+
+# Load required libraries
+library(knitr)
+library(kableExtra)
+
+# Render the table
+kable(model_comparison, format = "latex", booktabs = TRUE, caption = "Comparison of Model Performance Metrics") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
+```{r}
+#| results: hide
+#| include: false
+# Optimal K from earlier tuning
+optimal_k
+
+# Split full data into features and target
+full_features <- bank_clean[, -which(names(bank_clean) == "y")]
+full_target <- factor(bank_clean$y)
+
+# Predict using KNN on the full dataset
+knn_full_pred <- knn(full_features, full_features, cl = full_target, k = optimal_k)
+
+# Confusion Matrix and Metrics for KNN
+confusion_matrix_knn_full <- confusionMatrix(data = knn_full_pred, reference = full_target)
+
+# Print metrics for KNN
+cat("\n--- KNN Full Data Metrics ---\n")
+cat("Accuracy:", confusion_matrix_knn_full$overall["Accuracy"], "\n")
+cat("Precision:", confusion_matrix_knn_full$byClass["Precision"], "\n")
+cat("Recall:", confusion_matrix_knn_full$byClass["Recall"], "\n")
+cat("F1-Score:", confusion_matrix_knn_full$byClass["F1"], "\n")
+cat("\nConfusion Matrix:\n")
+print(confusion_matrix_knn_full$table)
+
+```
+
+```{r}
+#| results: hide
+#| include: false
+library(e1071)    # For SVM and tuning
+library(caret)    # For train-test split and metrics
+
+# Best parameters from tuning
+best_cost_rbf
+best_gamma_rbf
+
+# Train SVM with RBF kernel on the full dataset
+svm_full_rbf <- svm(
+  y ~ ., 
+  data = bank_clean, 
+  kernel = "radial", 
+  cost = best_cost_rbf, 
+  gamma = best_gamma_rbf
+)
+
+# Predict on the full dataset
+svm_full_pred <- predict(svm_full_rbf, bank_clean)
+
+# Ensure the target variable is a factor
+bank_clean$y <- factor(bank_clean$y)
+
+# Ensure predictions are factors with matching levels
+svm_full_pred <- factor(svm_full_pred, levels = levels(bank_clean$y))
+
+# Confusion Matrix and Metrics for SVM
+confusion_matrix_svm_full <- confusionMatrix(data = svm_full_pred, reference = bank_clean$y)
+
+# Print metrics for SVM
+cat("\n--- SVM Full Data Metrics ---\n")
+cat("Accuracy:", confusion_matrix_svm_full$overall["Accuracy"], "\n")
+cat("Precision:", confusion_matrix_svm_full$byClass["Precision"], "\n")
+cat("Recall:", confusion_matrix_svm_full$byClass["Recall"], "\n")
+cat("F1-Score:", confusion_matrix_svm_full$byClass["F1"], "\n")
+cat("\nConfusion Matrix:\n")
+print(confusion_matrix_svm_full$table)
+
+```
+
+##### Confusion Matrix for Full Data Set
+
+I chose to keep use the SVM model with the radial basis function kernel since its Precision and Accuracy was noticeable better than the linear kernel's metrics. The KNN and SVM (RBF) models was applied onto the full data set to checks its performance as seen below.
+
+$\textbf{Confusion Matrix: KNN}$
+$$
+\begin{array}{c|c|c}
+           & \textbf{Predicted No} & \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} & 5663 & 872 \\ 
+\textbf{Actual Yes} & 393  & 914 \\ 
+\end{array}
+$$
+$\textbf{Confusion Matrix: SVM (RBF)}$
+$$
+\begin{array}{c|c|c}
+           & \textbf{Predicted No} & \textbf{Predicted Yes} \\ \hline
+\textbf{Actual No} & 5773 & 677 \\ 
+\textbf{Actual Yes} & 283  & 1109 \\ 
+\end{array}
+$$
+$\textbf{Model Performance Metrics on Full Data Set}$
+```{r}
+#| echo: false
+# Load required libraries
+library(knitr)
+library(kableExtra)
+
+# Define the metrics data as a data frame
+metrics <- data.frame(
+  Metric = c("Accuracy", "Precision", "Recall", "F1-Score"),
+  KNN = c(0.8387, 0.8666, 0.9351, 0.8995),
+  `SVM (RBF)` = c(0.8776, 0.8950, 0.9533, 0.9232)
+)
+
+# Create the table using kable
+metrics_table <- metrics %>%
+  kable(
+    "latex",
+    booktabs = TRUE,
+    caption = "Performance Metrics: KNN vs SVM (RBF)",
+    align = "c"
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    full_width = FALSE
+  )
+
+# Print the table
+metrics_table
+```
+
+```{r}
+#| echo: false
+
+# Select two significant features for visualization
+features_to_plot <- bank_clean[, c("balance", "duration")]
+target <- factor(bank_clean$y)
+
+# Train SVM with two features
+svm_plot <- svm(
+  y ~ balance + duration, 
+  data = bank_clean, 
+  kernel = "radial", 
+  cost = best_cost_rbf, 
+  gamma = best_gamma_rbf
+)
+
+# Generate grid for decision boundary
+x1 <- seq(min(features_to_plot$balance), max(features_to_plot$balance), length.out = 100)
+x2 <- seq(min(features_to_plot$duration), max(features_to_plot$duration), length.out = 100)
+grid <- expand.grid(balance = x1, duration = x2)
+grid$pred <- predict(svm_plot, newdata = grid)
+
+# Plot decision boundary
+library(ggplot2)
+ggplot() +
+  geom_tile(data = grid, aes(x = balance, y = duration, fill = pred), alpha = 0.3) +
+  geom_point(data = bank_clean, aes(x = balance, y = duration, color = y), size = 2) +
+  labs(title = "SVM Decision Boundary", x = "Balance", y = "Duration") +
+  theme_minimal()
+
+```
+This is a sample SVM plot of two features with the fitted boundary.
+
+## Model Evaluation
+
+The two models, KNN and SVM (using the RBF kernel), were trained and evaluated on the full dataset. Both models demonstrated strong performance, with slight variations in their respective metrics. The KNN model achieved an accuracy of 0.8387 and a precision of 0.8666, highlighting its effectiveness in minimizing false positives. This is particularly valuable for marketing campaigns where resources are limited, ensuring that clients predicted to subscribe are more likely to actually do so, thereby reducing wasted efforts on uninterested clients.
+
+However, KNN’s recall (0.9351) was slightly lower compared to SVM, indicating that KNN might miss some potential subscribers. While this could result in missed revenue opportunities, the model’s higher precision makes it suitable for scenarios where avoiding false positives is critical. Additionally, KNN’s simplicity and ease of interpretation further solidify its role in contexts where explainability is essential.
+
+The SVM model using the RBF kernel outperformed KNN in recall, achieving a rate of 0.9533, the highest among both models. This indicates SVM’s strength in identifying potential clients who are likely to subscribe, reducing false negatives. In marketing applications, this high recall ensures a wider reach and minimizes the risk of overlooking potential customers, although it comes at the cost of slightly lower precision (0.8950). This trade-off may result in contacting a few uninterested clients, which is acceptable in scenarios where maximizing client engagement is a priority.
+
+The decision boundary visualization for SVM highlights its ability to model non-linear relationships within the data. This adaptability enables it to capture complex patterns in client behavior that simpler models, like KNN, may fail to recognize.
+
+
+
+# Conclusion
+
+This study aimed to evaluate the effectiveness of two machine learning models—KNN and SVM with an RBF kernel—for predicting whether a client would subscribe to a term deposit. The analysis showed that while both models performed well, the SVM model with the RBF kernel outperformed the KNN model across all key performance metrics.
+
+The SVM model achieved an accuracy of 87.76%, precision of 89.50%, recall of 95.33%, and an F1-score of 92.32%, outperforming KNN on every metric. Its superior recall highlights its ability to identify potential subscribers more effectively, reducing the number of false negatives. Additionally, its high precision ensures that the predicted subscribers are more likely to actually subscribe, which minimizes wasted marketing efforts. The SVM's adaptability to capture non-linear relationships in the data likely contributed to its superior performance, making it a strong choice for this task.
+
+In comparison, the KNN model achieved an accuracy of 83.87%, precision of 86.66%, recall of 93.51%, and an F1-score of 89.95%. While the KNN model showed reasonable performance, it lagged behind SVM on all fronts. Its slightly lower recall and precision indicate that it may miss some potential subscribers while also predicting a higher number of false positives compared to SVM. However, it is important to note that KNN remains a simpler and more interpretable model, which could still be valuable in situations where model explainability is critical.
+
+## Challenges and Limitations
+
+During the analysis, several challenges were encountered:
+
+-   Imbalanced Data: The dataset was imbalanced, with a significantly higher proportion of clients not subscribing. While stratified train-test splits helped mitigate this, imbalanced data inherently impacts model performance and could bias predictions toward the majority class.
+-   SVM Complexity: SVM required careful tuning of hyperparameters (e.g., cost and gamma) and was computationally intensive, especially when training on the full dataset. However, these efforts were justified by its superior performance.
+
+## Future Improvements
+
+To further enhance model performance and scalability, the following improvements are recommended: 
+
+-   Feature Engineering: Additional feature engineering or feature selection techniques, such as principal component analysis (PCA) or recursive feature elimination, could reduce dimensionality and improve efficiency. 
+-   Addressing Class Imbalance: Techniques like SMOTE or class-weighted loss functions could help address class imbalance and improve the models' ability to handle minority class predictions. 
+-   Exploration of Advanced Models: Incorporating ensemble methods, such as Random Forests or Gradient Boosting Machines, might yield even better predictive performance.
+-   Model Deployment Considerations: Given SVM’s computational complexity, it may be worthwhile to explore approximate SVM implementations or alternatives like logistic regression for real-time deployment.
+
+## Final Conclusion
+
+Based on the results, the SVM model with the RBF kernel is the clear winner for this application, delivering superior performance across accuracy, precision, recall, and F1-score. Its ability to balance identifying potential subscribers while maintaining high precision makes it the most reliable option for this marketing task. While KNN offers simplicity and interpretability, its lower performance metrics indicate that it is less suitable for this particular problem. In conclusion, SVM should be prioritized for deployment, especially in contexts where both recall and precision are critical to achieving marketing success.
+
+
+
+# References
+
+Moro, S., Rita, P., & Cortez, P. (2014). Bank Marketing [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5K306.
+
+McKinsey & Company. (2022). The state of customer care in 2022. Retrieved from https://shorturl.at/LsiQ7
+
+Deloitte. (2022). Why all organizations need a Customer Service Strategy, now!. Retrieved from https://shorturl.at/aQdB3
+
+James, G., Witten, D., Hastie, T., & Tibshirani, R. (2021). An introduction to statistical learning: With applications in R (2nd ed.). https://doi.org/10.1007/978-1-0716-1418-1
