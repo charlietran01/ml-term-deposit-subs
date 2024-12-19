@@ -4,7 +4,7 @@ author: Charlie Tran
 ---
 
 
-```{r, results='hide'}
+```{r, echo=FALSE, results='hide'}
 install.packages("class")
 install.packages("caret")
 install.packages("e1071")
